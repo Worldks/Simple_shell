@@ -1,0 +1,156 @@
+#include "../include/input_processing.h"
+
+static void clear_input(struct processing_input *input)
+{
+	input->double_quotes_number = 0;
+	input->processing_mode = simple_mode;
+	input->terminating_processing = no_error;
+}
+
+static void clear_resource(struct processing_input *input)
+{
+	clear_str_queue(&(input->words));
+	clear_dyn_arr(&(input->tmp_word));
+}
+
+static void change_mode_processing(struct processing_input *input)
+{
+	(input->double_quotes_number)++;
+	if(input->processing_mode == simple_mode)
+		input->processing_mode = inside_quotes_mode;
+	else
+		input->processing_mode = simple_mode;
+}
+
+static void end_input_expressino(struct processing_input *input)
+{
+	int empty = 0;
+	empty = is_dyn_arr_empty(&(input->tmp_word));
+	if((input->double_quotes_number)%2 != 0) {
+		input->terminating_processing = unmatched_quotes_error;
+		print_error(input);
+		return;
+	}
+	if(empty)
+		return;
+	add_str_to_queue(&(input->words), &(input->tmp_word));
+}
+
+static void separator_symbols(struct processing_input *input, char ch)
+{
+	int empty = 0;
+	empty = is_dyn_arr_empty(&(input->tmp_word));
+	if(input->processing_mode == simple_mode) {
+		if(empty)
+			return;
+		add_str_to_queue(&(input->words), &(input->tmp_word));
+		clear_dyn_arr(&(input->tmp_word));
+	} else
+		add_char_dyn_arr(&(input->tmp_word), ch);
+}
+
+static void escape_character(struct processing_input *input)
+{
+	int ch;
+	ch = getchar();
+	switch(ch) {
+		case '"':
+		case '\\':
+			add_char_dyn_arr(&(input->tmp_word), ch);
+			break;
+		default:
+			input->terminating_processing = escape_error;
+			print_error(input);
+	}
+}
+
+static void double_quotes_character(struct processing_input *input, int *ch)
+{
+	int empty = 0;
+	empty = is_dyn_arr_empty(&(input->tmp_word));
+	*ch = getchar();
+	if(empty && *ch == '"') {
+		*ch = getchar();
+		if(*ch == '\n' || *ch == ' ' || *ch == '	') {
+			add_str_to_queue(&(input->words), &(input->tmp_word));
+			clear_dyn_arr(&(input->tmp_word));
+			return;
+		}
+		input->terminating_processing = incorrect_use_double_quotes;
+		print_error(input);
+	}
+	change_mode_processing(input);
+	if(*ch == ' ' || *ch == '	')
+		separator_symbols(input, *ch);
+	else if(*ch == '\n'){
+		if(!empty)
+			add_str_to_queue(&(input->words), &(input->tmp_word));
+		return;
+	}
+	else
+		add_char_dyn_arr(&(input->tmp_word), *ch);
+}
+
+void init_processing_input(struct processing_input *input)
+{
+	input->double_quotes_number = 0;
+	input->processing_mode = simple_mode;
+	input->terminating_processing = no_error;
+	init_dyn_arr(&(input->tmp_word));
+	init_str_queue(&(input->words));
+}
+
+void process_char_from_input(struct processing_input *input, int *ch)
+{
+	switch(*ch) {
+		case 34:	/* " */
+			double_quotes_character(input, ch); /* double_quotes_character() */
+			break;
+		case 10:	/* \n */
+			end_input_expressino(input);
+			break;
+		case 32:	/* space */
+		case 9:		/* TAB */
+			separator_symbols(input, *ch);
+			break;
+		case 92:	/* \ */
+			escape_character(input);
+			break;
+		default:
+			add_char_dyn_arr(&(input->tmp_word), *ch);
+	}
+}
+
+void default_state_input(struct processing_input *input)
+{
+	clear_input(input);
+	clear_resource(input);
+}
+
+void execute_program(struct processing_input *input)
+{
+	print_str_queue_content(&(input->words));
+}
+
+void print_error(struct processing_input *input)
+{
+	switch(input->terminating_processing) {
+		case escape_error:
+			printf("Error: symbol \\ used for escaping: \" and \\.\n");
+			break;
+		case unmatched_quotes_error:
+			printf("Error: unmatched quotes.\n");
+			break;
+		case incorrect_use_double_quotes:
+			printf("Error: incorrect use double quotes.\n");
+			break;
+		case no_error:
+			break;
+	}
+}
+
+void error_during_processing(struct processing_input *input)
+{
+	if(input->terminating_processing)
+		default_state_input(input);
+}
