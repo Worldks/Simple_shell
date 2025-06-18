@@ -1,28 +1,28 @@
-#include "../include/strings_queue.h"
+#include "../include/queue_of_strings.h"
 
-static char *make_new_word(struct dyn_arr *arr)
+static char *make_new_word(struct string *tmp_word)
 {
 	int i = 0;
 	char *tmp;
-	if(arr->size_arr == 0) {  /* empty word */
-		arr->size_arr = 1;
+	if((tmp_word->str).size_arr == 0) {  /* empty word */
+		(tmp_word->str).size_arr = 1;
 		tmp = malloc(sizeof(char));
 		*tmp = '\0';
 		return tmp;
 	}
-	tmp = malloc((arr->size_arr + 1)*sizeof(char));
-	for( ; i <= arr->size_arr; i++)
-		*(tmp+i) = (arr->arr)[i];
+	tmp = malloc(((tmp_word->str).size_arr + 1)*sizeof(char));
+	for( ; i <= (tmp_word->str).size_arr; i++)
+		*(tmp+i) = ((tmp_word->str).arr)[i];
 	return tmp;
 }
 
-void init_str_queue(struct str_queue *words)
+void queue_of_str_init(struct queue_of_str *words)
 {
 	words->first = NULL;
 	words->last = NULL;
 }
 
-void clear_str_queue(struct str_queue *words)
+void queue_of_str_clear(struct queue_of_str *words)
 {
 	struct word_item *tmp;
 	while(words->first != NULL) {
@@ -34,7 +34,7 @@ void clear_str_queue(struct str_queue *words)
 	words->last = NULL;
 }
 
-void print_str_queue_content(struct str_queue *words)
+void queue_of_str_print_content(struct queue_of_str *words)
 {
 	struct word_item *tmp;
 	tmp = words->first;
@@ -44,7 +44,7 @@ void print_str_queue_content(struct str_queue *words)
 	}
 }
 
-void add_str_to_queue(struct str_queue *words, struct dyn_arr *tmp_word)
+void queue_of_str_add_str(struct queue_of_str *words, struct string *tmp_word)
 {
 	/* adding to END of list */
 	struct word_item *tmp;

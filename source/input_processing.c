@@ -9,8 +9,8 @@ static void clear_input(struct processing_input *input)
 
 static void clear_resource(struct processing_input *input)
 {
-	clear_str_queue(&(input->words));
-	clear_dyn_arr(&(input->tmp_word));
+	queue_of_str_clear(&(input->words));
+	string_clear(&(input->tmp_word));
 }
 
 static void change_mode_processing(struct processing_input *input)
@@ -22,10 +22,10 @@ static void change_mode_processing(struct processing_input *input)
 		input->processing_mode = simple_mode;
 }
 
-static void end_input_expressino(struct processing_input *input)
+static void end_input_expression(struct processing_input *input)
 {
 	int empty = 0;
-	empty = is_dyn_arr_empty(&(input->tmp_word));
+	empty = string_is_empty(&(input->tmp_word));
 	if((input->double_quotes_number)%2 != 0) {
 		input->terminating_processing = unmatched_quotes_error;
 		print_error(input);
@@ -33,20 +33,20 @@ static void end_input_expressino(struct processing_input *input)
 	}
 	if(empty)
 		return;
-	add_str_to_queue(&(input->words), &(input->tmp_word));
+	queue_of_str_add_str(&(input->words), &(input->tmp_word));
 }
 
 static void separator_symbols(struct processing_input *input, char ch)
 {
 	int empty = 0;
-	empty = is_dyn_arr_empty(&(input->tmp_word));
+	empty = string_is_empty(&(input->tmp_word));
 	if(input->processing_mode == simple_mode) {
 		if(empty)
 			return;
-		add_str_to_queue(&(input->words), &(input->tmp_word));
-		clear_dyn_arr(&(input->tmp_word));
+		queue_of_str_add_str(&(input->words), &(input->tmp_word));
+		string_clear(&(input->tmp_word));
 	} else
-		add_char_dyn_arr(&(input->tmp_word), ch);
+		string_add_char(&(input->tmp_word), ch);
 }
 
 static void escape_character(struct processing_input *input)
@@ -56,7 +56,7 @@ static void escape_character(struct processing_input *input)
 	switch(ch) {
 		case '"':
 		case '\\':
-			add_char_dyn_arr(&(input->tmp_word), ch);
+			string_add_char(&(input->tmp_word), ch);
 			break;
 		default:
 			input->terminating_processing = escape_error;
@@ -67,13 +67,13 @@ static void escape_character(struct processing_input *input)
 static void double_quotes_character(struct processing_input *input, int *ch)
 {
 	int empty = 0;
-	empty = is_dyn_arr_empty(&(input->tmp_word));
+	empty = string_is_empty(&(input->tmp_word));
 	*ch = getchar();
 	if(empty && *ch == '"') {
 		*ch = getchar();
 		if(*ch == '\n' || *ch == ' ' || *ch == '	') {
-			add_str_to_queue(&(input->words), &(input->tmp_word));
-			clear_dyn_arr(&(input->tmp_word));
+			queue_of_str_add_str(&(input->words), &(input->tmp_word));
+			string_clear(&(input->tmp_word));
 			return;
 		}
 		input->terminating_processing = incorrect_use_double_quotes;
@@ -84,11 +84,11 @@ static void double_quotes_character(struct processing_input *input, int *ch)
 		separator_symbols(input, *ch);
 	else if(*ch == '\n'){
 		if(!empty)
-			add_str_to_queue(&(input->words), &(input->tmp_word));
+			queue_of_str_add_str(&(input->words), &(input->tmp_word));
 		return;
 	}
 	else
-		add_char_dyn_arr(&(input->tmp_word), *ch);
+		string_add_char(&(input->tmp_word), *ch);
 }
 
 void init_processing_input(struct processing_input *input)
@@ -96,8 +96,8 @@ void init_processing_input(struct processing_input *input)
 	input->double_quotes_number = 0;
 	input->processing_mode = simple_mode;
 	input->terminating_processing = no_error;
-	init_dyn_arr(&(input->tmp_word));
-	init_str_queue(&(input->words));
+	string_init(&(input->tmp_word));
+	queue_of_str_init(&(input->words));
 }
 
 void process_char_from_input(struct processing_input *input, int *ch)
@@ -107,7 +107,7 @@ void process_char_from_input(struct processing_input *input, int *ch)
 			double_quotes_character(input, ch); /* double_quotes_character() */
 			break;
 		case 10:	/* \n */
-			end_input_expressino(input);
+			end_input_expression(input);
 			break;
 		case 32:	/* space */
 		case 9:		/* TAB */
@@ -117,7 +117,7 @@ void process_char_from_input(struct processing_input *input, int *ch)
 			escape_character(input);
 			break;
 		default:
-			add_char_dyn_arr(&(input->tmp_word), *ch);
+			string_add_char(&(input->tmp_word), *ch);
 	}
 }
 
@@ -129,7 +129,7 @@ void default_state_input(struct processing_input *input)
 
 void execute_program(struct processing_input *input)
 {
-	print_str_queue_content(&(input->words));
+	queue_of_str_print_content(&(input->words));
 }
 
 void print_error(struct processing_input *input)
