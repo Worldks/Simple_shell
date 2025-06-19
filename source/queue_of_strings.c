@@ -11,8 +11,9 @@ static char *make_new_word(struct string *tmp_word)
 		return tmp;
 	}
 	tmp = malloc(((tmp_word->str).size_arr + 1)*sizeof(char));
-	for( ; i <= (tmp_word->str).size_arr; i++)
+	for( ; i <= (tmp_word->str).size_arr; i++) {
 		*(tmp+i) = ((tmp_word->str).arr)[i];
+	}
 	return tmp;
 }
 
@@ -54,6 +55,7 @@ void queue_of_str_add_str(struct queue_of_str *words, struct string *tmp_word)
 	if(words->last) {
 		words->last->next = tmp;
 		words->last = tmp;
-	} else
+	} else {
 		words->first = words->last = tmp;
+	}
 }

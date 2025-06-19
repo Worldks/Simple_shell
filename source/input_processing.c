@@ -129,7 +129,8 @@ void default_state_input(struct processing_input *input)
 
 void execute_program(struct processing_input *input)
 {
-	queue_of_str_print_content(&(input->words));
+/*	queue_of_str_print_content(&(input->words)); */
+	process_command_and_execute(&(input->words));
 }
 
 void print_error(struct processing_input *input)

@@ -2,6 +2,7 @@
 #define INPUT_PROCESSING_SENTRY
 #include "string.h"
 #include "queue_of_strings.h"
+#include "exec_program.h"
 
 enum input_mode  { simple_mode,             inside_quotes_mode          };
 enum input_error { no_error,                escape_error,  
