@@ -20,7 +20,7 @@ static char **args_from_command(struct queue_of_str *list)
 	args[i] = NULL;
 	equal = is_str_equal(args[0], "cd");
 	if(equal) {
-		if(wcnt != 2) {
+		if(wcnt > 2) {
 			return NULL;
 		}	
 	}
@@ -48,10 +48,20 @@ static int exec_program(char* const *args)
 static void change_current_working_dir_process(char* const *args)
 {
 	int res;
-	res = chdir(args[1]);
+	char *home_dir;
+	if(args[1]) {
+		res = chdir(args[1]);
+	} else {
+		home_dir = getenv("HOME");
+		if(home_dir) {
+			res = chdir(home_dir);
+		} else {
+			fprintf(stderr, "I don't know your home directory.\n");
+			return;
+		}
+	}
 	if(res == -1) {
 		perror(args[1]);
-		exit(1);
 	}
 }
 

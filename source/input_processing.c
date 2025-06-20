@@ -1,5 +1,31 @@
 #include "../include/input_processing.h"
 
+static void
+shell_specific_separator_symbols(struct processing_input *input,
+											 int ch);
+
+static int is_shell_specific_separator(int ch)
+{
+	if(ch == '&' || ch == '>' || ch == '<' || 
+	   ch == '|' || ch == '(' || ch == ')' ||
+	   ch == ';') {
+		return 1;
+	}
+	return 0;
+}
+
+static void add_one_character_word(struct processing_input *input, int ch)
+{
+	string_add_char(&(input->tmp_word), ch);
+	queue_of_str_add_str(&(input->words), &(input->tmp_word));
+	string_clear(&(input->tmp_word));
+}
+static void add_word(struct processing_input *input)
+{
+	queue_of_str_add_str(&(input->words), &(input->tmp_word));
+	string_clear(&(input->tmp_word));
+}
+
 static void clear_input(struct processing_input *input)
 {
 	input->double_quotes_number = 0;
@@ -16,10 +42,11 @@ static void clear_resource(struct processing_input *input)
 static void change_mode_processing(struct processing_input *input)
 {
 	(input->double_quotes_number)++;
-	if(input->processing_mode == simple_mode)
+	if(input->processing_mode == simple_mode) {
 		input->processing_mode = inside_quotes_mode;
-	else
+	} else {
 		input->processing_mode = simple_mode;
+	}
 }
 
 static void end_input_expression(struct processing_input *input)
@@ -31,22 +58,10 @@ static void end_input_expression(struct processing_input *input)
 		print_error(input);
 		return;
 	}
-	if(empty)
+	if(empty) {
 		return;
+	}
 	queue_of_str_add_str(&(input->words), &(input->tmp_word));
-}
-
-static void separator_symbols(struct processing_input *input, char ch)
-{
-	int empty = 0;
-	empty = string_is_empty(&(input->tmp_word));
-	if(input->processing_mode == simple_mode) {
-		if(empty)
-			return;
-		queue_of_str_add_str(&(input->words), &(input->tmp_word));
-		string_clear(&(input->tmp_word));
-	} else
-		string_add_char(&(input->tmp_word), ch);
 }
 
 static void escape_character(struct processing_input *input)
@@ -64,31 +79,90 @@ static void escape_character(struct processing_input *input)
 	}
 }
 
-static void double_quotes_character(struct processing_input *input, int *ch)
+static void separator_symbols(struct processing_input *input, char ch)
 {
 	int empty = 0;
+	empty = string_is_empty(&(input->tmp_word));
+	if(input->processing_mode == simple_mode) {
+		if(empty) {
+			return;
+		}
+		add_word(input);
+	} else {
+		string_add_char(&(input->tmp_word), ch);
+	}
+}
+
+static void double_quotes_character(struct processing_input *input, int *ch)
+{
+	int empty = 0, shell_separator = 0;
 	empty = string_is_empty(&(input->tmp_word));
 	*ch = getchar();
 	if(empty && *ch == '"') {
 		*ch = getchar();
 		if(*ch == '\n' || *ch == ' ' || *ch == '	') {
-			queue_of_str_add_str(&(input->words), &(input->tmp_word));
-			string_clear(&(input->tmp_word));
+			add_word(input);
 			return;
 		}
 		input->terminating_processing = incorrect_use_double_quotes;
 		print_error(input);
 	}
 	change_mode_processing(input);
-	if(*ch == ' ' || *ch == '	')
+	if(*ch == ' ' || *ch == '	') {
 		separator_symbols(input, *ch);
-	else if(*ch == '\n'){
-		if(!empty)
+	} else if(*ch == '\n') {
+		if(!empty) {
 			queue_of_str_add_str(&(input->words), &(input->tmp_word));
+		}
 		return;
-	}
-	else
+	} else {
+		shell_separator = is_shell_specific_separator(*ch);
+		if(shell_separator) {
+			add_word(input);
+			shell_specific_separator_symbols(input, *ch);
+			return;
+		}
 		string_add_char(&(input->tmp_word), *ch);
+	}
+}
+
+static void shell_specific_separator_symbols(struct processing_input *input,
+											 int ch)
+{
+	int empty = 0, nch = 0;
+	empty = string_is_empty(&(input->tmp_word));
+	if(input->processing_mode == simple_mode) {
+		nch = getchar();
+		if(!empty) {
+			add_word(input);
+		}
+		if(nch == '&' || nch == '>' || nch == '|') {
+			string_add_char(&(input->tmp_word), ch);
+			add_one_character_word(input, nch);
+			return;
+		} else if(nch == '"') {
+			add_one_character_word(input, ch);
+			double_quotes_character(input, &nch);
+			return;
+		} else if(nch == ' ' || nch == '	') {
+			add_one_character_word(input, ch);
+			return;
+		}
+		add_one_character_word(input, ch);
+		if(nch == '\n') {
+			if(input->terminating_processing) {
+				error_during_processing(input);
+			} else {
+				execute_program(input);
+			}
+			printf("> ");
+			default_state_input(input);
+			return;
+		}
+		string_add_char(&(input->tmp_word), nch);
+	} else {
+		string_add_char(&(input->tmp_word), ch);
+	}
 }
 
 void init_processing_input(struct processing_input *input)
@@ -104,7 +178,7 @@ void process_char_from_input(struct processing_input *input, int *ch)
 {
 	switch(*ch) {
 		case 34:	/* " */
-			double_quotes_character(input, ch); /* double_quotes_character() */
+			double_quotes_character(input, ch);
 			break;
 		case 10:	/* \n */
 			end_input_expression(input);
@@ -115,6 +189,15 @@ void process_char_from_input(struct processing_input *input, int *ch)
 			break;
 		case 92:	/* \ */
 			escape_character(input);
+			break;
+		case 38:	/* & */
+		case 40:	/* ( */
+		case 41:	/* ) */
+		case 59:	/* ; */
+		case 60:	/* < */
+		case 62:	/* > */
+		case 124:	/* | */
+			shell_specific_separator_symbols(input, *ch);
 			break;
 		default:
 			string_add_char(&(input->tmp_word), *ch);
@@ -129,8 +212,8 @@ void default_state_input(struct processing_input *input)
 
 void execute_program(struct processing_input *input)
 {
-/*	queue_of_str_print_content(&(input->words)); */
-	process_command_and_execute(&(input->words));
+	queue_of_str_print_content(&(input->words));
+/*	process_command_and_execute(&(input->words)); */
 }
 
 void print_error(struct processing_input *input)
@@ -152,6 +235,7 @@ void print_error(struct processing_input *input)
 
 void error_during_processing(struct processing_input *input)
 {
-	if(input->terminating_processing)
+	if(input->terminating_processing) {
 		default_state_input(input);
+	}
 }
