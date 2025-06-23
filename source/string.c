@@ -1,31 +1,86 @@
 #include "../include/string.h"
 
-void string_init(struct string *tmp_word)
+static void increas_string_size(struct string *strp)
 {
-	init_dyn_arr(&(tmp_word->str));
-	(tmp_word->str).arr[0] = '\0';
+	char *new_str;
+	void *mem;
+	int i;
+	mem = malloc(2 * sizeof(strp->length));
+	if(mem) {
+		new_str = mem;
+	} else {
+		perror("increas_string_size()");
+	}
+	for(i = 0; i <= strp->occupied_size; i++)
+		new_str[i] = (strp->str)[i];
+	free(strp->str);
+	strp->str = new_str;
+	strp->length *= 2;
 }
 
-void string_clear(struct string *tmp_word)
+void string_init(struct string *strp)
 {
-	clear_dyn_arr(&(tmp_word->str));
+	void *mem;
+	mem = malloc(sizeof(char) * start_string_length);
+	if(mem) {
+		strp->str = mem;
+		(strp->str)[0] = '\0';
+	} else {
+		perror("string_init()");
+	}
+	strp->occupied_size = 0;
+	strp->length = start_string_length;
 }
 
-void string_add_char(struct string *tmp_word, int ch)
+void string_clear(struct string *strp)
 {
-	add_char_dyn_arr(&(tmp_word->str), ch);
+	strp->occupied_size = 0;
+	(strp->str)[0] = '\0';
 }
 
-int string_is_empty(struct string *tmp_word)
+void string_add_char(struct string *strp, int ch)
 {
-	int res = is_dyn_arr_empty(&(tmp_word->str));
-	return res;
+	if(strp->occupied_size == strp->length - 1)
+		increas_string_size(strp);
+	(strp->str)[strp->occupied_size] = ch;
+	strp->occupied_size++;
+	(strp->str)[strp->occupied_size] = '\0';
 }
 
-void string_delete(struct string *tmp_word)
+void string_add_str(struct string *strp, const char *str)
 {
-	clear_dyn_arr(&(tmp_word->str));
-	free((tmp_word->str).arr);
+	int strlen, i;
+	strlen = str_length(str);
+	if(strp->occupied_size + strlen > strp->length - 1)
+		increas_string_size(strp);
+	for(i = 0; i < strlen; i++) {
+		(strp->str)[strp->occupied_size] = str[i];
+		strp->occupied_size++;
+	}
+	(strp->str)[strp->occupied_size] = '\0';
+}
+
+int string_is_empty(struct string *strp)
+{
+	return strp->occupied_size == 0 ? 1 : 0;
+}
+
+void string_delete(struct string *strp)
+{
+	free(strp->str);
+	strp->str = NULL;
+	strp->occupied_size = 0;
+	strp->length = 0;
+}
+
+int string_delete_part(struct string *strp, int start_position, int len)
+{
+	if(start_position >= strp->occupied_size ||
+       strp->occupied_size - start_position < 0)
+		return 1;	/* error */
+	(strp->str)[start_position] = '\0';
+	strp->occupied_size = start_position;
+	return 0;
 }
 
 enum compare compare_strings(const char *str_1, const char *str_2)

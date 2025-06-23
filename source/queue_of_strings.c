@@ -1,20 +1,16 @@
 #include "../include/queue_of_strings.h"
 
-static char *make_new_word(struct string *tmp_word)
-{
-	int i = 0;
-	char *tmp;
-	if((tmp_word->str).size_arr == 0) {  /* empty word */
-		(tmp_word->str).size_arr = 1;
-		tmp = malloc(sizeof(char));
-		*tmp = '\0';
-		return tmp;
+static char *copy_word(struct string *tmp_word)
+{ /* make copy of string and add to queue */
+	char *str;
+	if(string_is_empty(tmp_word)) {
+		str = malloc(sizeof(char));
+		*str = '\0';
+		return str;
 	}
-	tmp = malloc(((tmp_word->str).size_arr + 1)*sizeof(char));
-	for( ; i <= (tmp_word->str).size_arr; i++) {
-		*(tmp+i) = ((tmp_word->str).arr)[i];
-	}
-	return tmp;
+	str = malloc(tmp_word->occupied_size*sizeof(char));
+	str_copy(str, tmp_word->str);
+	return str;
 }
 
 void queue_of_str_init(struct queue_of_str *words)
@@ -51,7 +47,7 @@ void queue_of_str_add_str(struct queue_of_str *words, struct string *tmp_word)
 	struct word_item *tmp;
 	tmp = malloc(sizeof(struct word_item));
 	tmp->next = NULL;
-	tmp->word = make_new_word(tmp_word);
+	tmp->word = copy_word(tmp_word);
 	if(words->last) {
 		words->last->next = tmp;
 		words->last = tmp;
