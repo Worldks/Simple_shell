@@ -17,6 +17,7 @@ int main(int argc, char **argv)
 			} else {
 				execute_program(&input);
 			}
+			clear_zombies_nohang();
 			printf("> ");
 			default_state_input(&input);
 		}

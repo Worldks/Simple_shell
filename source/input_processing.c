@@ -191,8 +191,13 @@ void default_state_input(struct processing_input *input)
 
 void execute_program(struct processing_input *input)
 {
-	queue_of_str_print_content(&(input->words));
-/*	process_command_and_execute(&(input->words));  */
+/*	queue_of_str_print_content(&(input->words));   */
+	if(input->exec_process_mode == exec_background) {
+		clear_zombies_nohang();
+		exec_program_in_background(&(input->words));
+	} else {
+		exec_program(&(input->words));
+	}
 }
 
 void print_error(struct processing_input *input)

@@ -11,6 +11,8 @@ static char **args_from_command(struct queue_of_str *list)
 	}
 	if(wcnt) {
 		args = malloc((wcnt+1)*sizeof(char*));
+	} else {
+		return NULL;
 	}
 	tmp = list->first;
 	for(i = 0; i < wcnt; i++) {
@@ -27,22 +29,16 @@ static char **args_from_command(struct queue_of_str *list)
 	return args;
 }
 
-static int exec_program(char* const *args)
+static void make_args(char ***args, struct queue_of_str *words)
 {
-	int pid, wr, status;
-	pid = fork();
-	if(pid == -1) {
-		perror("fork()");
-		exit(2);
-	} else if(pid == 0) {
-		execvp(args[0], args);
-		perror("execvp(). can't execute program");
-		fflush(stderr);
-		_exit(1);
-	} else {
-		wr = wait(&status);
+	*args = args_from_command(words);
+	if(!*args) {
+/*		fprintf(stderr, "Empty command\n");	*/
+		return;
 	}
-	return pid;
+	fflush(stdin);
+	fflush(stdout);
+	fflush(stderr);
 }
 
 static void change_current_working_dir_process(char* const *args)
@@ -65,23 +61,71 @@ static void change_current_working_dir_process(char* const *args)
 	}
 }
 
-void process_command_and_execute(struct queue_of_str *words)
+int exec_program_in_background(struct queue_of_str *words)
 {
-	int equal;
+	int pid, wr, equal;
 	char **args;
-	args = args_from_command(words);
+	make_args(&args, words);
 	if(!args) {
-		fprintf(stderr, "Uncorrect command\n");
-		return;
+		return -1;
 	}
-	fflush(stdin);
-	fflush(stdout);
-	fflush(stderr);
 	equal = is_str_equal(args[0], "cd");
 	if(equal) {
 		change_current_working_dir_process(args);
-	} else {
-		exec_program(args);
+		pid = getpid();
+		return pid; 
+	}
+	pid = fork();
+	if(pid == -1) {
+		perror("fork()");
+		exit(2);
+	} else if(pid == 0) {
+		execvp(args[0], args);
+		perror("execvp(). can't execute program");
+		fflush(stderr);
+		_exit(1);
 	}
 	free(args);
+	return pid;
+}
+
+int exec_program(struct queue_of_str *words)
+{
+	int pid, wr;
+	int equal;
+	char **args;
+	make_args(&args, words);
+	if(!args) {
+		return -1;
+	}
+	equal = is_str_equal(args[0], "cd");
+	if(equal) {
+		change_current_working_dir_process(args);
+		pid = getpid();
+		return pid;
+	}
+	pid = fork();
+	if(pid == -1) {
+		perror("fork()");
+		exit(2);
+	} else if(pid == 0) {
+		execvp(args[0], args);
+		perror("execvp(). can't execute program");
+		fflush(stderr);
+		_exit(1);
+	} else {
+		do {
+			wr = wait(NULL);
+		} while(wr != pid);
+	}
+	free(args);
+	return pid;
+}
+
+void clear_zombies_nohang()
+{
+	int p;
+	do {
+		p = wait4(-1, NULL, WNOHANG, NULL);
+	} while(p > 0);
 }
